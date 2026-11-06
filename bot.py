@@ -1,3 +1,10 @@
+from aiogram.filters import CommandStart
+from aiogram.types import Message
+
+@router.message(CommandStart())
+async def cmd_start(message: Message):
+    await message.answer("Salut! Bine ai venit în ecosistemul Vintage Escrow.")
+    # Aici poți adăuga meniul tău principal sau butoanele inline
 import asyncio
 import logging
 import aiosqlite
