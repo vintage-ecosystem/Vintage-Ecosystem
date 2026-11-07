@@ -10,13 +10,13 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 # Preluarea token-ului din variabilele de mediu
 TOKEN = os.getenv("BOT_TOKEN")
 
-# --- MENIUL PRINCIPAL ---
+# --- MENIUL PRINCIPAL (exact ca în imaginea ta) ---
 def get_main_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="💼 Portofel & Sold", callback_data="wallet")],
         [InlineKeyboardButton(text="🤝 Tranzacții Active Escrow", callback_data="escrow_active")],
         [InlineKeyboardButton(text="📜 Istoric Tranzacții", callback_data="history")],
-        [InlineKeyboardButton(text="🛠️ Suport Tehnic", callback_data="support")]
+        [InlineKeyboardButton(text="⚙️ Setări Cont", callback_data="settings")]
     ])
 
 async def safe_edit_text(callback: CallbackQuery, text: str):
@@ -28,11 +28,11 @@ async def safe_edit_text(callback: CallbackQuery, text: str):
             parse_mode="Markdown"
         )
     except TelegramBadRequest:
-        pass  # Conținutul este identic, ignorăm eroarea
+        pass
     await callback.answer()
 
 async def main():
-    # Inițializare logging la începutul execuției
+    # Inițializare logging
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
     if not TOKEN:
@@ -48,7 +48,7 @@ async def main():
     async def cmd_start(message: Message):
         await message.answer(
             "⚡ **Vintage Ecosystem Hub**\n\n"
-            "Bun venit în panoul tău de control escrow. Alege o secțiune:",
+            "Alege o secțiune de mai jos:",
             reply_markup=get_main_menu(),
             parse_mode="Markdown"
         )
@@ -65,7 +65,7 @@ async def main():
     async def cmd_support(message: Message):
         await message.answer("🛠️ Pentru asistență, contactează administratorul direct.")
 
-    # --- HANDLERE PENTRU BUTOANE (CALLBACKS) ---
+    # --- HANDLERE PENTRU BUTOANELE INTERACTIVE (CALLBACKS) ---
     
     @dp.callback_query(F.data == "wallet")
     async def cb_wallet(callback: CallbackQuery):
@@ -79,11 +79,12 @@ async def main():
     async def cb_history(callback: CallbackQuery):
         await safe_edit_text(callback, "📜 **Istoric Tranzacții**\n\nArhiva este goală.")
 
-    @dp.callback_query(F.data == "support")
-    async def cb_support(callback: CallbackQuery):
-        await safe_edit_text(callback, "🛠️ **Suport**\n\nScrie mesajul tău aici și va fi preluat de un operator.")
+    # Handlerul pentru butonul nou din imagine: Setări Cont
+    @dp.callback_query(F.data == "settings")
+    async def cb_settings(callback: CallbackQuery):
+        await safe_edit_text(callback, "⚙️ **Setări Cont**\n\nAici îți poți configura preferințele contului.")
 
-    # Șterge mesajele vechi din coadă și pornește botul
+    # Șterge mesajele vechi și pornește botul
     await bot.delete_webhook(drop_pending_updates=True)
     logging.info("Botul a pornit cu succes în cloud!")
     await dp.start_polling(bot)
