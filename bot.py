@@ -3,28 +3,44 @@ import logging
 import os
 import sys
 from aiogram import Bot, Dispatcher, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-# Preluarea token-ului din variabilele de mediu de pe Render
+# Preluarea token-ului din variabilele de mediu
 TOKEN = os.getenv("BOT_TOKEN")
 
+# --- MENIUL PRINCIPAL ---
+def get_main_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💼 Portofel & Sold", callback_data="wallet")],
+        [InlineKeyboardButton(text="🤝 Tranzacții Active Escrow", callback_data="escrow_active")],
+        [InlineKeyboardButton(text="📜 Istoric Tranzacții", callback_data="history")],
+        [InlineKeyboardButton(text="🛠️ Suport Tehnic", callback_data="support")]
+    ])
+
+async def safe_edit_text(callback: CallbackQuery, text: str):
+    """Previne eroarea TelegramBadRequest dacă textul nu s-a schimbat."""
+    try:
+        await callback.message.edit_text(
+            text,
+            reply_markup=get_main_menu(),
+            parse_mode="Markdown"
+        )
+    except TelegramBadRequest:
+        pass  # Conținutul este identic, ignorăm eroarea
+    await callback.answer()
+
 async def main():
+    # Inițializare logging la începutul execuției
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
     if not TOKEN:
-        logging.error("Eroare critică: BOT_TOKEN nu este setat pe Render!")
+        logging.error("Eroare critică: BOT_TOKEN nu este setat în variabilele de mediu!")
         return
 
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
-
-    # --- MENIUL PRINCIPAL ---
-    def get_main_menu():
-        return InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💼 Portofel & Sold", callback_data="wallet")],
-            [InlineKeyboardButton(text="🤝 Tranzacții Active Escrow", callback_data="escrow_active")],
-            [InlineKeyboardButton(text="📜 Istoric Tranzacții", callback_data="history")],
-            [InlineKeyboardButton(text="🛠️ Suport Tehnic", callback_data="support")]
-        ])
 
     # --- HANDLERE PENTRU COMENZI TEXT ---
     
@@ -49,51 +65,27 @@ async def main():
     async def cmd_support(message: Message):
         await message.answer("🛠️ Pentru asistență, contactează administratorul direct.")
 
-    # --- HANDLERE PENTRU BUTOANELE INTERACTIVE (CALLBACKS) ---
+    # --- HANDLERE PENTRU BUTOANE (CALLBACKS) ---
     
     @dp.callback_query(F.data == "wallet")
-    async def cb_wallet(callback):
-        await callback.message.edit_text(
-            "💼 **Portofel & Sold**\n\nSold curent: `0.00 EUR`",
-            reply_markup=get_main_menu(),
-            parse_mode="Markdown"
-        )
-        await callback.answer()
+    async def cb_wallet(callback: CallbackQuery):
+        await safe_edit_text(callback, "💼 **Portofel & Sold**\n\nSold curent: `0.00 EUR`")
 
     @dp.callback_query(F.data == "escrow_active")
-    async def cb_escrow(callback):
-        await callback.message.edit_text(
-            "🤝 **Tranzacții Active**\n\nNu ai nicio tranzacție deschisă momentan.",
-            reply_markup=get_main_menu(),
-            parse_mode="Markdown"
-        )
-        await callback.answer()
+    async def cb_escrow(callback: CallbackQuery):
+        await safe_edit_text(callback, "🤝 **Tranzacții Active**\n\nNu ai nicio tranzacție deschisă momentan.")
 
     @dp.callback_query(F.data == "history")
-    async def cb_history(callback):
-        await callback.message.edit_text(
-            "📜 **Istoric Tranzacții**\n\nArhiva este goală.",
-            reply_markup=get_main_menu(),
-            parse_mode="Markdown"
-        )
-        await callback.answer()
+    async def cb_history(callback: CallbackQuery):
+        await safe_edit_text(callback, "📜 **Istoric Tranzacții**\n\nArhiva este goală.")
 
     @dp.callback_query(F.data == "support")
-    async def cb_support(callback):
-        await callback.message.edit_text(
-            "🛠️ **Suport**\n\nScrie mesajul tău aici și va fi preluat de un operator.",
-            reply_markup=get_main_menu(),
-            parse_mode="Markdown"
-        )
-        await callback.answer()
+    async def cb_support(callback: CallbackQuery):
+        await safe_edit_text(callback, "🛠️ **Suport**\n\nScrie mesajul tău aici și va fi preluat de un operator.")
 
-    # --- PORNIREA BOTULUI ---
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    
-    # Șterge mesajele vechi din coadă ca să evităm erorile de timeout
+    # Șterge mesajele vechi din coadă și pornește botul
     await bot.delete_webhook(drop_pending_updates=True)
-    
-    print("Botul a pornit cu succes în cloud!")
+    logging.info("Botul a pornit cu succes în cloud!")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
